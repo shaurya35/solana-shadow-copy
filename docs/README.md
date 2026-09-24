@@ -1,4 +1,4 @@
-# Solana Trade Diagnostics — documentation index
+# Documentation
 
 ## Project status
 
@@ -7,7 +7,7 @@
 - Repository: `solana-trade-diagnostics`.
 - Target chain: Solana mainnet-beta only for version `0.1`.
 - Primary implementation: Rust.
-- Required product surface: HTTP API, Telegram connector, and demo Telegram bot; web demo is optional polish.
+- Product surface: HTTP API, Telegram message renderer, and demo Telegram bot.
 - Safety boundary: read-only analysis; no wallet connection, signing, simulation, or transaction submission.
 
 ## One-line product
@@ -21,7 +21,7 @@
 | [PRODUCT_SPEC.md](./PRODUCT_SPEC.md) | User problem, product behavior, scope, non-goals, claims, and success criteria |
 | [ARCHITECTURE.md](./ARCHITECTURE.md) | System boundaries, data flow, modules, domain model, classifiers, confidence, and operational behavior |
 | [API_AND_TELEGRAM.md](./API_AND_TELEGRAM.md) | HTTP contract, Telegram rendering contract, demo-bot flow, and possible existing-bot integration |
-| [IMPLEMENTATION.md](./IMPLEMENTATION.md) | Generic build order, module responsibilities, verification gates, and release checklist |
+| [IMPLEMENTATION.md](./IMPLEMENTATION.md) | Code layout, configuration, commands, and current limits |
 | [END_TO_END_TEST.md](./END_TO_END_TEST.md) | Dated Telegram, API, live RPC, classification, and Explorer test evidence |
 
 ## Fixed version `0.1` decisions
@@ -36,7 +36,7 @@
 | Unknown errors | Preserve program, code, instruction, and logs; never guess the meaning |
 | Telegram integration | Return a Telegram-compatible message body; the caller retains its own bot token and `chat_id` |
 | Demo bot | `/explain <signature>` plus preloaded `/examples` |
-| Demo page | Optional after the required API and Telegram showcase works |
+| Web page | Not included in version `0.1` |
 | Persistence | No database or runtime cache in `0.1`; checked-in sanitized fixtures are used for tests |
 | Execution | No transaction building, simulation, signing, sending, retrying, or automated trading |
 | Product claim | Read-only Solana diagnostics prototype for Telegram trading systems |
@@ -48,16 +48,14 @@
 | Diagnosis | A structured interpretation derived from transaction metadata, program identity, documented mappings, and logs |
 | Evidence | Exact RPC fields or log lines that support a diagnosis |
 | Confirmed classification | Program identity and documented error mapping or an explicit runtime log support the conclusion |
-| Probable classification | Multiple signals support a conclusion, but the available evidence is incomplete |
 | Unknown classification | The project cannot defend a human-readable cause |
 | Landed failure | A failed transaction returned by `getTransaction` with execution metadata and a fee |
 | Off-chain failure | A bot, API, quote, network, or application error with no landed Solana transaction |
 | Telegram connector | Rendering and payload code that converts a diagnosis into a bot-ready message without receiving a bot token |
 
-## Documentation rules
+## Rules used in the implementation
 
-- Verify external contracts again when implementation starts.
-- Pin dependency versions in `Cargo.lock` and the web lockfile.
+- Pin Rust dependency versions in `Cargo.lock`.
 - Record the documentation URL and verification date beside every program-specific error mapping.
 - Treat RPC responses and program logs as untrusted data.
 - Keep public claims narrower than the implementation evidence.

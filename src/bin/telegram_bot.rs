@@ -9,6 +9,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         .with_env_filter(EnvFilter::try_from_default_env().unwrap_or_else(|_| "info".into()))
         .try_init()?;
     let bot = TelegramBot::new(&config)?;
+    bot.verify_connection().await?;
 
     info!(diagnostics_api = %config.diagnostics_api_url(), "Telegram bot started");
     tokio::select! {

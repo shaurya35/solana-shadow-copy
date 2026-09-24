@@ -162,20 +162,18 @@ fn jupiter_slippage(transaction: &NormalizedTransaction) -> Diagnosis {
 }
 
 fn unknown_program_error(transaction: &NormalizedTransaction) -> Diagnosis {
+    let Some(instruction) = transaction.failed_instruction.as_ref() else {
+        return unknown_transaction_error(transaction);
+    };
+    let Some(code) = instruction.custom_code else {
+        return unknown_transaction_error(transaction);
+    };
     let mut diagnosis = base_diagnosis(transaction);
-    let instruction = transaction
-        .failed_instruction
-        .as_ref()
-        .expect("caller checked custom instruction error");
     let program_id = transaction
         .attributed_failure_program_id
         .as_deref()
         .or(instruction.program_id.as_deref())
         .unwrap_or("unknown program");
-    let code = instruction
-        .custom_code
-        .expect("caller checked custom instruction error");
-
     diagnosis.category = Category::UnknownProgramError;
     diagnosis.title = "Transaction failed with an unmapped program error".to_owned();
     diagnosis.explanation = format!(

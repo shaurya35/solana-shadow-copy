@@ -107,7 +107,8 @@ impl BotConfig {
     }
 
     fn from_lookup(mut lookup: impl FnMut(&str) -> Option<String>) -> Result<Self, ConfigError> {
-        let telegram_bot_token = SecretString(required(&mut lookup, "TELEGRAM_BOT_TOKEN")?);
+        let telegram_bot_token =
+            parse_telegram_token(required(&mut lookup, "TELEGRAM_BOT_TOKEN")?)?;
         let diagnostics_api_url = parse_http_url(
             "DIAGNOSTICS_API_URL",
             required(&mut lookup, "DIAGNOSTICS_API_URL")?,
@@ -136,6 +137,8 @@ pub enum ConfigError {
     },
     #[error("environment variable {name} must be a positive integer number of milliseconds")]
     InvalidMilliseconds { name: &'static str },
+    #[error("TELEGRAM_BOT_TOKEN is not a valid Telegram bot token")]
+    InvalidTelegramToken,
 }
 
 fn load_dotenv() -> Result<(), ConfigError> {
@@ -161,6 +164,23 @@ fn parse_http_url(name: &'static str, value: String) -> Result<Url, ConfigError>
     match url.scheme() {
         "http" | "https" => Ok(url),
         _ => Err(ConfigError::InvalidUrl { name }),
+    }
+}
+
+fn parse_telegram_token(value: String) -> Result<SecretString, ConfigError> {
+    let Some((bot_id, secret)) = value.split_once(':') else {
+        return Err(ConfigError::InvalidTelegramToken);
+    };
+    let valid_bot_id = !bot_id.is_empty() && bot_id.bytes().all(|byte| byte.is_ascii_digit());
+    let valid_secret = !secret.is_empty()
+        && secret
+            .bytes()
+            .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'_' | b'-'));
+
+    if valid_bot_id && valid_secret {
+        Ok(SecretString(value))
+    } else {
+        Err(ConfigError::InvalidTelegramToken)
     }
 }
 
@@ -240,12 +260,29 @@ mod tests {
     #[test]
     fn bot_token_debug_output_is_redacted() {
         let config = BotConfig::from_lookup(lookup(&[
-            ("TELEGRAM_BOT_TOKEN", "123456:secret-token"),
+            ("TELEGRAM_BOT_TOKEN", "123456:secret-token_123"),
             ("DIAGNOSTICS_API_URL", "http://127.0.0.1:8080"),
         ]))
         .expect("valid bot configuration");
 
         assert_eq!(format!("{:?}", config.telegram_bot_token()), "[REDACTED]");
-        assert_eq!(config.telegram_bot_token().expose(), "123456:secret-token");
+        assert_eq!(
+            config.telegram_bot_token().expose(),
+            "123456:secret-token_123"
+        );
+    }
+
+    #[test]
+    fn bot_config_rejects_a_malformed_token_without_echoing_it() {
+        let token = "not-a-bot-id:private-secret";
+        let error = BotConfig::from_lookup(lookup(&[
+            ("TELEGRAM_BOT_TOKEN", token),
+            ("DIAGNOSTICS_API_URL", "http://127.0.0.1:8080"),
+        ]))
+        .err()
+        .expect("malformed token must fail");
+
+        assert!(matches!(error, ConfigError::InvalidTelegramToken));
+        assert!(!error.to_string().contains(token));
     }
 }

@@ -7,18 +7,12 @@ use thiserror::Error;
 
 use crate::{
     config::BotConfig,
+    examples::{INSUFFICIENT_SIGNATURE, JUPITER_SIGNATURE, UNKNOWN_SIGNATURE},
     render_telegram::{LinkPreviewOptions, TelegramMessage},
 };
 
 const LONG_POLL_SECONDS: u64 = 30;
 const RETRY_DELAY: Duration = Duration::from_secs(1);
-
-const INSUFFICIENT_SIGNATURE: &str =
-    "5DLZ8sA6FPFThpKiD2QGzX3ufPjbV3hRk7Xf7P1A7m3kgB6KX6wcRcND4BdWXNwfbJxV1XNo7JooZJsj7GBrcuYn";
-const JUPITER_SIGNATURE: &str =
-    "5UntMZRg4ChcYbsY5orMi3ez7uvc64GdheL8R39sWiPRfCeSqQzhK9JYGQ1eeri9LhFYKDVL84KKPQamQJy7V1xR";
-const UNKNOWN_SIGNATURE: &str =
-    "42CkCpX9maDhJmFNZj5dDCS4uoo1ELSqyosuQp9BAU4e8xMbRx3K39DnX3UctgbeRdjukAJo9UTpwGHgKq8nZhUM";
 
 #[derive(Clone)]
 pub struct TelegramBot {
@@ -147,6 +141,10 @@ impl TelegramBot {
         }
     }
 
+    pub async fn verify_connection(&self) -> Result<(), TelegramError> {
+        self.telegram.verify().await
+    }
+
     async fn handle_update(&self, update: Update) -> Result<(), TelegramError> {
         let Some(message) = update.message else {
             return Ok(());
@@ -217,6 +215,21 @@ impl TelegramBot {
 }
 
 impl TelegramClient {
+    async fn verify(&self) -> Result<(), TelegramError> {
+        let url = self
+            .api_base
+            .join("getMe")
+            .map_err(|_| TelegramError::InvalidUrl)?;
+        let response = self
+            .http
+            .get(url)
+            .send()
+            .await
+            .map_err(|_| TelegramError::TelegramRequest)?;
+        let _: Value = parse_telegram_response(response).await?;
+        Ok(())
+    }
+
     async fn get_updates(&self, offset: Option<i64>) -> Result<Vec<Update>, TelegramError> {
         let url = self
             .api_base

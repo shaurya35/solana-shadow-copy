@@ -84,24 +84,27 @@ impl RpcClient {
             ]
         });
 
-        for attempt in 0..=1 {
-            match self
-                .http
-                .post(self.endpoint.clone())
-                .json(&body)
-                .send()
-                .await
-            {
-                Ok(response) if response.status().is_server_error() && attempt == 0 => {
-                    tokio::time::sleep(RETRY_DELAY).await;
-                }
-                Ok(response) => return parse_response(response, request_id).await,
-                Err(_) if attempt == 0 => tokio::time::sleep(RETRY_DELAY).await,
-                Err(error) => return Err(RpcError::Transport(error)),
+        match self
+            .http
+            .post(self.endpoint.clone())
+            .json(&body)
+            .send()
+            .await
+        {
+            Ok(response) if !response.status().is_server_error() => {
+                return parse_response(response, request_id).await;
             }
+            Ok(_) | Err(_) => tokio::time::sleep(RETRY_DELAY).await,
         }
 
-        unreachable!("bounded retry loop always returns on its final attempt")
+        let response = self
+            .http
+            .post(self.endpoint.clone())
+            .json(&body)
+            .send()
+            .await
+            .map_err(RpcError::Transport)?;
+        parse_response(response, request_id).await
     }
 }
 

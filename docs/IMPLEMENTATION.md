@@ -1,221 +1,97 @@
-# Implementation guide
+# Implementation notes
 
-## Goal
+## What is built
 
-- Build a read-only Solana transaction diagnostics service.
-- Accept one finalized transaction signature.
-- Return an evidence-backed diagnosis through HTTP and Telegram.
-- Support two confirmed classifications and an honest unknown fallback.
-
-## Version `0.1` scope
-
-### Required
-
-- Rust diagnostics library.
-- Solana `getTransaction` RPC client.
-- Transaction and instruction normalization.
-- Nested program-log attribution.
-- Insufficient-lamports classifier.
-- Jupiter `6001` classifier bound to the verified program ID.
-- Unknown program and transaction fallbacks.
-- HTTP diagnosis endpoint.
-- Telegram renderer and demo bot.
-- Three sanitized mainnet fixtures.
-- Focused regression and API tests.
-- Docker image and concise README.
-
-### Deferred
-
-- Trade execution, signing, simulation, or retries.
-- Wallet connection or private-key handling.
-- Additional program classifiers.
-- Database, persistent cache, and analytics dashboard.
-- Web interface.
-- Multi-provider failover and production-scale infrastructure.
+- A Rust library for normalization, failure attribution, classification, and Telegram rendering.
+- An Axum HTTP server backed by Solana `getTransaction`.
+- A separate Telegram long-polling bot that calls the HTTP API.
+- Three sanitized mainnet fixtures with recorded hashes and expected results.
+- Offline regression tests, API tests, Docker packaging, and GitHub Actions CI.
 
 ## Repository layout
 
 ```text
-Cargo.toml
-Cargo.lock
-.env.example
 src/
-  lib.rs
-  config.rs
-  domain.rs
-  rpc.rs
-  normalize.rs
-  invocation_logs.rs
-  classify.rs
-  render_telegram.rs
-  api.rs
-  bin/
-    server.rs
-    telegram_bot.rs
-fixtures/
-  manifest.json
-  insufficient_transfer.json
-  jupiter_slippage_6001.json
-  unknown_custom_error.json
-tests/
-  fixture_regression.rs
-  api.rs
-  telegram_rendering.rs
-Dockerfile
+  api.rs                 HTTP routes and error mapping
+  classify.rs            deterministic diagnosis rules
+  config.rs              environment parsing and secret redaction
+  domain.rs              public diagnosis types
+  examples.rs            verified demo signatures
+  invocation_logs.rs     nested program-call parser
+  normalize.rs           RPC response normalization
+  render_telegram.rs     safe Telegram HTML
+  rpc.rs                  signature validation and RPC client
+  telegram.rs             Telegram polling and commands
+  bin/server.rs           API entry point
+  bin/telegram_bot.rs     bot entry point
+fixtures/                 sanitized RPC responses
+tests/                    fixture regression tests
+docs/assets/              end-to-end screenshots
 ```
 
-## Module responsibilities
+## Classification rules
 
-| Module | Responsibility |
-|---|---|
-| `config` | Load and validate RPC, HTTP, Telegram, CORS, and logging configuration |
-| `domain` | Own stable diagnosis, evidence, confidence, instruction, and error types |
-| `rpc` | Validate signatures and call finalized `getTransaction` with timeouts |
-| `normalize` | Convert RPC JSON into stable account, instruction, fee, error, and log data |
-| `invocation_logs` | Parse nested `invoke`, `success`, and `failed` program lines |
-| `classify` | Apply deterministic classifiers in fixed priority order |
-| `render_telegram` | Escape and render a diagnosis as a Telegram message fragment |
-| `api` | Expose diagnosis, example-list, and health routes |
-| `server` | Start the HTTP service and shared dependencies |
-| `telegram_bot` | Parse commands, call the API, and send responses with its own token |
+Rules run in this order:
 
-## External contracts
-
-### Solana RPC
-
-- Method: `getTransaction`.
-- Commitment: `finalized`.
-- Encoding: `jsonParsed`.
-- Maximum supported transaction version: `0`.
-- Map `result: null` to transaction unavailable.
-- Map missing metadata to metadata unavailable.
-- Bound response and log sizes.
-- Never log an authenticated RPC URL.
-
-### HTTP API
-
-- `POST /v1/diagnoses` analyzes one signature.
-- `GET /v1/examples` lists the public example signatures.
-- `GET /health` reports process health without an RPC call.
-- Return exact lamport values as decimal strings.
-- Return known and unknown diagnoses with the same response shape.
-- Return a Telegram message fragment without `chat_id` or bot token.
-
-### Telegram bot
-
-- `/start` explains the read-only purpose.
-- `/examples` shows the three public example signatures.
-- `/explain <signature>` requests a live diagnosis.
-- `/help` shows supported input and limitations.
-- Use long polling for the initial deployment.
-
-## Classification order
-
-1. Explicit `Transfer: insufficient lamports <available>, need <required>` runtime evidence.
-2. Verified Jupiter program ID plus custom error `6001`.
-3. Attributed custom program error with no verified mapping.
+1. Exact insufficient-lamports runtime log.
+2. Jupiter Swap program plus documented custom error `6001`.
+3. Unmapped custom program error.
 4. Generic transaction error.
 
-## Evidence rules
+The output is deterministic. No model or external explanation service is used.
 
-- A confirmed diagnosis requires explicit runtime evidence or an exact program-ID and documented-code mapping.
-- A numeric custom error never inherits the meaning of the same number from another program.
-- Unknown is a valid analysis result.
-- Preserve the failed instruction, program, code, fee, and bounded logs when available.
-- Never generate a diagnosis or remediation with an LLM.
-- Never promise that a retry will succeed.
+## Configuration
 
-## Build sequence
+| Variable | Purpose | Default |
+|---|---|---|
+| `SOLANA_RPC_URL` | Solana mainnet RPC endpoint | Required |
+| `RPC_CONNECT_TIMEOUT_MS` | RPC connect timeout | `2000` |
+| `RPC_REQUEST_TIMEOUT_MS` | Whole RPC request timeout | `8000` |
+| `API_BIND_ADDR` | HTTP listen address | `0.0.0.0:8080` |
+| `DIAGNOSTICS_API_URL` | API base URL used by the bot | Required for bot |
+| `TELEGRAM_BOT_TOKEN` | Token from BotFather | Required for bot |
+| `RUST_LOG` | Log filter | `info` in the example file |
 
-### 1. Scaffold
+`.env` is ignored by Git. Configuration errors never include secret values.
 
-- Verify current crate versions from official documentation.
-- Create one Rust library and `server` and `telegram_bot` binaries.
-- Add typed configuration and `.env.example`.
-- Gate: `cargo check` passes and secrets remain untracked.
-
-### 2. Add fixtures
-
-- Fetch the three public transactions through `getTransaction`.
-- Compare fees, errors, programs, and logs with Solana Explorer.
-- Remove provider metadata and credentials.
-- Record expected results and fixture hashes.
-- Gate: each fixture is manually verified.
-
-### 3. Implement the diagnostics core
-
-- Normalize legacy and version `0` transactions.
-- Resolve the failed top-level instruction safely.
-- Parse nested program invocation logs with a checked stack.
-- Attribute the deepest failing program only when logs support it.
-- Implement exact integer lamport-to-SOL formatting.
-- Implement the four classification outcomes.
-- Gate: all fixture regressions pass offline.
-
-### 4. Implement the live API
-
-- Add the RPC client with connect and total timeouts.
-- Add signature validation before outbound work.
-- Add diagnosis, example-list, and health routes.
-- Add typed validation, unavailable, provider, and internal errors.
-- Gate: all three public signatures work through `curl`.
-
-### 5. Implement Telegram
-
-- Render HTML-safe messages with an Explorer button.
-- Add API client and command handlers.
-- Keep token and `chat_id` inside the bot process.
-- Add clear invalid-input and provider-error messages.
-- Gate: commands work from a real Telegram account.
-
-### 6. Package and release
-
-- Run format, lint, tests, and release build.
-- Build a non-root Docker image.
-- Deploy API and long-polling bot.
-- Verify the hosted bot from a separate account.
-- Complete README examples and limitations.
-
-## Required tests
-
-- Signature validation rejects wallet keys, URLs, malformed base58, and oversized input.
-- Legacy and version `0` fixtures normalize without panics.
-- Failed instruction indexes are bounds checked.
-- Invocation parsing handles nested, missing, and malformed log sequences.
-- Insufficient-lamports amounts are exact.
-- Jupiter `6001` matches only the verified program.
-- The unknown fixture remains unknown.
-- Lamport formatting uses integer arithmetic.
-- Telegram renderer escapes program-controlled text.
-- Invalid API input does not call RPC.
-- Null and timed-out RPC responses map to stable HTTP errors.
-
-## Verification commands
+## Run locally
 
 ```bash
+cp .env.example .env
+cargo run --bin server
+```
+
+In a second terminal:
+
+```bash
+cargo run --bin telegram_bot
+```
+
+The bot exits during startup if its token is malformed or Telegram rejects `getMe`.
+
+## Verification
+
+```bash
+./scripts/verify-fixtures.sh
 cargo fmt --check
 cargo clippy --all-targets --all-features -- -D warnings
-cargo test --all-targets
-cargo build --release --bins
+cargo test --all-targets --locked
+cargo build --release --bins --locked
 docker build -t solana-trade-diagnostics:local .
 ```
 
-## Release checklist
+## Current limits
 
-- [x] Three real fixtures are checked and reproducible.
-- [x] Two confirmed classifications and both unknown fallbacks work.
-- [x] Wrong-program Jupiter code remains unknown.
-- [x] Live HTTP requests work for all example signatures.
-- [x] Telegram commands, diagnoses, invalid-input handling, and Explorer buttons are verified with an operator-provided bot token.
-- [x] RPC URL and Telegram token are absent from Git and logs.
-- [x] Local non-root Docker build and container smoke test pass.
-- [x] Hosted CI passes on the published commit.
-- [x] README describes supported behavior and limitations accurately.
+- Mainnet-beta only.
+- Legacy and version `0` transactions only.
+- One RPC provider.
+- No cache, database, web interface, authentication, or per-user rate limit.
+- Only landed, finalized transactions can be diagnosed.
+- Three showcase failure classes plus a generic fallback.
 
-## Primary references
+## References
 
 - Solana `getTransaction`: <https://solana.com/docs/rpc/http/gettransaction>
 - Solana RPC JSON structures: <https://solana.com/docs/rpc/json-structures>
 - Jupiter common errors: <https://dev.jup.ag/docs/swap/common-errors>
-- Telegram `sendMessage`: <https://core.telegram.org/bots/api#sendmessage>
-- Telegram inline keyboards: <https://core.telegram.org/bots/api#inlinekeyboardmarkup>
+- Telegram Bot API: <https://core.telegram.org/bots/api>

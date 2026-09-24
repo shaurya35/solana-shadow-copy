@@ -4,6 +4,7 @@ pub mod api;
 pub mod classify;
 pub mod config;
 pub mod domain;
+pub mod examples;
 pub mod invocation_logs;
 pub mod normalize;
 pub mod render_telegram;

@@ -23,7 +23,7 @@ use tower::limit::ConcurrencyLimitLayer;
 
 use crate::{
     Diagnosis, NormalizeError, diagnose_rpc_response,
-    domain::Category,
+    examples::{self, Example},
     render_telegram::{self, TelegramMessage},
     rpc::{RpcClient, RpcError, ValidatedSignature, validate_signature},
 };
@@ -83,13 +83,6 @@ struct DiagnosisResponse {
     #[serde(skip_serializing_if = "Option::is_none")]
     telegram_message: Option<TelegramMessage>,
     analyzed_at: String,
-}
-
-#[derive(Debug, Serialize)]
-struct Example {
-    signature: &'static str,
-    expected_category: Category,
-    label: &'static str,
 }
 
 #[derive(Debug)]
@@ -184,23 +177,7 @@ async fn diagnose_inner(
 }
 
 async fn examples() -> Json<Vec<Example>> {
-    Json(vec![
-        Example {
-            signature: "5DLZ8sA6FPFThpKiD2QGzX3ufPjbV3hRk7Xf7P1A7m3kgB6KX6wcRcND4BdWXNwfbJxV1XNo7JooZJsj7GBrcuYn",
-            expected_category: Category::InsufficientTransferBalance,
-            label: "Insufficient SOL transfer",
-        },
-        Example {
-            signature: "5UntMZRg4ChcYbsY5orMi3ez7uvc64GdheL8R39sWiPRfCeSqQzhK9JYGQ1eeri9LhFYKDVL84KKPQamQJy7V1xR",
-            expected_category: Category::JupiterSlippageToleranceExceeded,
-            label: "Jupiter slippage tolerance exceeded",
-        },
-        Example {
-            signature: "42CkCpX9maDhJmFNZj5dDCS4uoo1ELSqyosuQp9BAU4e8xMbRx3K39DnX3UctgbeRdjukAJo9UTpwGHgKq8nZhUM",
-            expected_category: Category::UnknownProgramError,
-            label: "Unknown custom program error",
-        },
-    ])
+    Json(examples::all())
 }
 
 async fn health() -> Json<Value> {
