@@ -209,7 +209,7 @@ docker build -t solana-trade-diagnostics:local .
 - [ ] Telegram commands and Explorer buttons are verified with an operator-provided bot token.
 - [x] RPC URL and Telegram token are absent from Git and logs.
 - [x] Local non-root Docker build and container smoke test pass.
-- [ ] Hosted CI passes on the published commit.
+- [x] Hosted CI passes on the published commit.
 - [x] README describes supported behavior and limitations accurately.
 
 ## Primary references
