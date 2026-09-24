@@ -27,6 +27,56 @@
         "category": "insufficient_transfer_balance",
         "confidence": "confirmed"
       }
+    },
+    {
+      "name": "jupiter_slippage_6001",
+      "file": "jupiter_slippage_6001.json",
+      "signature": "5UntMZRg4ChcYbsY5orMi3ez7uvc64GdheL8R39sWiPRfCeSqQzhK9JYGQ1eeri9LhFYKDVL84KKPQamQJy7V1xR",
+      "rpc_method": "getTransaction",
+      "rpc_config": {
+        "commitment": "finalized",
+        "encoding": "jsonParsed",
+        "max_supported_transaction_version": 0
+      },
+      "fetched_at": "2026-09-24T09:31:30Z",
+      "verified_at": "2026-09-24",
+      "verified_against": "https://explorer.solana.com/tx/5UntMZRg4ChcYbsY5orMi3ez7uvc64GdheL8R39sWiPRfCeSqQzhK9JYGQ1eeri9LhFYKDVL84KKPQamQJy7V1xR?cluster=mainnet",
+      "sha256": "1ab3f3131a49b99271726cda728cec160e0132bad8cca46a63c4c7d76be1015f",
+      "expected": {
+        "transaction_version": 0,
+        "failed_instruction_index": 4,
+        "failed_program_id": "JUP6LkbZbjS1jKKwapdHNy74zcZ3tLUZoi5QNyVTaV4",
+        "custom_error_code": 6001,
+        "fee_lamports": "8444",
+        "compute_units_consumed": "170187",
+        "category": "jupiter_slippage_tolerance_exceeded",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "name": "unknown_custom_error",
+      "file": "unknown_custom_error.json",
+      "signature": "42CkCpX9maDhJmFNZj5dDCS4uoo1ELSqyosuQp9BAU4e8xMbRx3K39DnX3UctgbeRdjukAJo9UTpwGHgKq8nZhUM",
+      "rpc_method": "getTransaction",
+      "rpc_config": {
+        "commitment": "finalized",
+        "encoding": "jsonParsed",
+        "max_supported_transaction_version": 0
+      },
+      "fetched_at": "2026-09-24T09:31:30Z",
+      "verified_at": "2026-09-24",
+      "verified_against": "https://explorer.solana.com/tx/42CkCpX9maDhJmFNZj5dDCS4uoo1ELSqyosuQp9BAU4e8xMbRx3K39DnX3UctgbeRdjukAJo9UTpwGHgKq8nZhUM?cluster=mainnet",
+      "sha256": "f32ee5abf74827b4471fae2b8f1e6caa738336570e5751fc5b7096341efc4b4c",
+      "expected": {
+        "transaction_version": 0,
+        "failed_instruction_index": 7,
+        "failed_program_id": "CApP1caNy2LgFLV4WZtSf3WPaECpm6gN3zT9kCmXN29y",
+        "custom_error_code": 43008,
+        "fee_lamports": "5000",
+        "compute_units_consumed": "151715",
+        "category": "unknown_program_error",
+        "confidence": "unknown"
+      }
     }
   ]
 }

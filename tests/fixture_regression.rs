@@ -5,10 +5,16 @@ const SIGNATURE: &str =
 const SYSTEM_PROGRAM_ID: &str = "11111111111111111111111111111111";
 const INSUFFICIENT_LAMPORTS_LOG: &str =
     "Transfer: insufficient lamports 2100979360, need 2500000000";
+const JUPITER_PROGRAM_ID: &str = "JUP6LkbZbjS1jKKwapdHNy74zcZ3tLUZoi5QNyVTaV4";
+const UNKNOWN_PROGRAM_ID: &str = "CApP1caNy2LgFLV4WZtSf3WPaECpm6gN3zT9kCmXN29y";
 
 fn insufficient_transfer_fixture() -> Value {
     serde_json::from_str(include_str!("../fixtures/insufficient_transfer.json"))
         .expect("insufficient-transfer fixture must contain valid JSON")
+}
+
+fn fixture(contents: &str) -> Value {
+    serde_json::from_str(contents).expect("fixture must contain valid JSON")
 }
 
 #[test]
@@ -44,4 +50,50 @@ fn insufficient_transfer_fixture_contains_verified_failure_evidence() {
         logs.iter()
             .any(|line| line.as_str() == Some(INSUFFICIENT_LAMPORTS_LOG))
     );
+}
+
+#[test]
+fn jupiter_fixture_contains_program_bound_error_6001() {
+    let fixture = fixture(include_str!("../fixtures/jupiter_slippage_6001.json"));
+    let result = &fixture["result"];
+    let meta = &result["meta"];
+
+    assert_eq!(result["version"], 0);
+    assert_eq!(meta["err"]["InstructionError"][0], 4);
+    assert_eq!(meta["err"]["InstructionError"][1]["Custom"], 6001);
+    assert_eq!(meta["fee"], 8_444);
+    assert_eq!(meta["computeUnitsConsumed"], 170_187);
+    assert_eq!(
+        result["transaction"]["message"]["instructions"][4]["programId"],
+        JUPITER_PROGRAM_ID
+    );
+    assert!(meta["logMessages"].as_array().unwrap().iter().any(|line| {
+        line.as_str()
+            == Some(
+                "Program JUP6LkbZbjS1jKKwapdHNy74zcZ3tLUZoi5QNyVTaV4 failed: custom program error: 0x1771",
+            )
+    }));
+}
+
+#[test]
+fn unknown_fixture_preserves_unmapped_program_error() {
+    let fixture = fixture(include_str!("../fixtures/unknown_custom_error.json"));
+    let result = &fixture["result"];
+    let meta = &result["meta"];
+
+    assert_eq!(result["version"], 0);
+    assert_eq!(meta["err"]["InstructionError"][0], 7);
+    assert_eq!(meta["err"]["InstructionError"][1]["Custom"], 43_008);
+    assert_eq!(meta["fee"], 5_000);
+    assert_eq!(meta["computeUnitsConsumed"], 151_715);
+    assert_eq!(
+        result["transaction"]["message"]["instructions"][7]["programId"],
+        UNKNOWN_PROGRAM_ID
+    );
+    assert!(meta["logMessages"].as_array().unwrap().iter().any(|line| {
+        line.as_str()
+            == Some(
+                "Program CApP1caNy2LgFLV4WZtSf3WPaECpm6gN3zT9kCmXN29y failed: custom program error: 0xa800",
+            )
+    }));
 }
