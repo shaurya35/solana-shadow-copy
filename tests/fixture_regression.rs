@@ -1,4 +1,8 @@
 use serde_json::Value;
+use solana_trade_diagnostics::{
+    diagnose_rpc_response,
+    domain::{Category, Confidence},
+};
 
 const SIGNATURE: &str =
     "5DLZ8sA6FPFThpKiD2QGzX3ufPjbV3hRk7Xf7P1A7m3kgB6KX6wcRcND4BdWXNwfbJxV1XNo7JooZJsj7GBrcuYn";
@@ -50,6 +54,13 @@ fn insufficient_transfer_fixture_contains_verified_failure_evidence() {
         logs.iter()
             .any(|line| line.as_str() == Some(INSUFFICIENT_LAMPORTS_LOG))
     );
+
+    let diagnosis = diagnose_rpc_response(&fixture).expect("fixture must normalize");
+    assert_eq!(diagnosis.category, Category::InsufficientTransferBalance);
+    assert_eq!(diagnosis.confidence, Confidence::Confirmed);
+    assert_eq!(diagnosis.fee_sol.as_deref(), Some("0.000055"));
+    assert!(diagnosis.explanation.contains("2.5 SOL"));
+    assert!(diagnosis.explanation.contains("2.10097936 SOL"));
 }
 
 #[test]
@@ -73,6 +84,13 @@ fn jupiter_fixture_contains_program_bound_error_6001() {
                 "Program JUP6LkbZbjS1jKKwapdHNy74zcZ3tLUZoi5QNyVTaV4 failed: custom program error: 0x1771",
             )
     }));
+
+    let diagnosis = diagnose_rpc_response(&fixture).expect("fixture must normalize");
+    assert_eq!(
+        diagnosis.category,
+        Category::JupiterSlippageToleranceExceeded
+    );
+    assert_eq!(diagnosis.confidence, Confidence::Confirmed);
 }
 
 #[test]
@@ -96,4 +114,27 @@ fn unknown_fixture_preserves_unmapped_program_error() {
                 "Program CApP1caNy2LgFLV4WZtSf3WPaECpm6gN3zT9kCmXN29y failed: custom program error: 0xa800",
             )
     }));
+
+    let diagnosis = diagnose_rpc_response(&fixture).expect("fixture must normalize");
+    assert_eq!(diagnosis.category, Category::UnknownProgramError);
+    assert_eq!(diagnosis.confidence, Confidence::Unknown);
+}
+
+#[test]
+fn error_6001_from_another_program_is_not_called_jupiter_slippage() {
+    let mut fixture = fixture(include_str!("../fixtures/jupiter_slippage_6001.json"));
+    fixture["result"]["transaction"]["message"]["instructions"][4]["programId"] =
+        Value::String(UNKNOWN_PROGRAM_ID.to_owned());
+    let logs = fixture["result"]["meta"]["logMessages"]
+        .as_array_mut()
+        .expect("fixture log messages");
+    for line in logs {
+        if let Some(value) = line.as_str() {
+            *line = Value::String(value.replace(JUPITER_PROGRAM_ID, UNKNOWN_PROGRAM_ID));
+        }
+    }
+
+    let diagnosis = diagnose_rpc_response(&fixture).expect("fixture must normalize");
+    assert_eq!(diagnosis.category, Category::UnknownProgramError);
+    assert_eq!(diagnosis.confidence, Confidence::Unknown);
 }
