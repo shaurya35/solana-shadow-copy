@@ -22,6 +22,7 @@
 | [ARCHITECTURE.md](./ARCHITECTURE.md) | System boundaries, data flow, modules, domain model, classifiers, confidence, and operational behavior |
 | [API_AND_TELEGRAM.md](./API_AND_TELEGRAM.md) | HTTP contract, Telegram rendering contract, demo-bot flow, and possible existing-bot integration |
 | [IMPLEMENTATION.md](./IMPLEMENTATION.md) | Generic build order, module responsibilities, verification gates, and release checklist |
+| [END_TO_END_TEST.md](./END_TO_END_TEST.md) | Dated Telegram, API, live RPC, classification, and Explorer test evidence |
 
 ## Fixed version `0.1` decisions
 

@@ -62,6 +62,17 @@ The response includes the category, confidence, failed instruction, fee, bounded
 
 `fixtures/` contains the sanitized RPC responses, expected facts, Explorer verification links, and SHA-256 hashes used by offline regression tests.
 
+## End-to-end Telegram proof
+
+Tested on 24 September 2026 through a real Telegram bot, the local diagnostics API, Helius RPC, and finalized Solana mainnet transactions.
+
+<p>
+  <img src="docs/assets/telegram-insufficient-sol.png" width="49%" alt="Confirmed insufficient SOL diagnosis in Telegram">
+  <img src="docs/assets/telegram-jupiter-slippage.png" width="49%" alt="Confirmed Jupiter slippage diagnosis in Telegram">
+</p>
+
+The complete test record includes the start flow, all three classifications, invalid-input handling, and Explorer verification: [end-to-end test evidence](docs/END_TO_END_TEST.md).
+
 ## Telegram demo bot
 
 Create a bot with BotFather and set `TELEGRAM_BOT_TOKEN` in `.env`. Keep the API running, then start:
