@@ -8,6 +8,7 @@ pub mod invocation_logs;
 pub mod normalize;
 pub mod render_telegram;
 pub mod rpc;
+pub mod telegram;
 
 use serde_json::Value;
 
