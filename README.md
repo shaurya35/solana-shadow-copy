@@ -9,14 +9,10 @@ The service currently recognizes:
 - Unmapped custom program errors without guessing their meaning.
 - Generic transaction failures and successful transactions.
 
-It never connects a wallet, signs, simulates, retries, or submits a transaction.
-
 ## Architecture
 
 ```text
-signature -> HTTP API -> finalized getTransaction -> normalization
-          -> invocation attribution -> deterministic classifiers
-          -> structured JSON + Telegram-safe message
+signature -> HTTP API -> finalized getTransaction -> normalization -> invocation attribution -> deterministic classifiers -> structured JSON + Telegram-safe message
 ```
 
 The demo Telegram bot is a separate process. It calls the public HTTP contract instead of importing classification logic or receiving the RPC credential.
