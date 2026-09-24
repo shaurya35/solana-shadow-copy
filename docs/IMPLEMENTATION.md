@@ -206,7 +206,7 @@ docker build -t solana-trade-diagnostics:local .
 - [x] Two confirmed classifications and both unknown fallbacks work.
 - [x] Wrong-program Jupiter code remains unknown.
 - [x] Live HTTP requests work for all example signatures.
-- [ ] Telegram commands and Explorer buttons are verified with an operator-provided bot token.
+- [x] Telegram commands, diagnoses, invalid-input handling, and Explorer buttons are verified with an operator-provided bot token.
 - [x] RPC URL and Telegram token are absent from Git and logs.
 - [x] Local non-root Docker build and container smoke test pass.
 - [x] Hosted CI passes on the published commit.

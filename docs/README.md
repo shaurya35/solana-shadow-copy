@@ -2,7 +2,7 @@
 
 ## Project status
 
-- Status: implemented locally; API and all three mainnet examples are live-tested, while a real Telegram send requires an operator-provided bot token.
+- Status: implemented and end-to-end tested through a real Telegram bot against all three mainnet examples, plus invalid-input handling.
 - Working name: `solana-trade-diagnostics`.
 - Repository: `solana-trade-diagnostics`.
 - Target chain: Solana mainnet-beta only for version `0.1`.
