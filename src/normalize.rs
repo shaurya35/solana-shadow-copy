@@ -16,6 +16,7 @@ pub struct NormalizedTransaction {
     pub transaction_error: Option<Value>,
     pub log_messages: Vec<String>,
     pub attributed_failure_program_id: Option<String>,
+    pub failure_program_from_logs: bool,
     pub invocation_logs_malformed: bool,
 }
 
@@ -75,23 +76,36 @@ pub fn normalize_rpc_response(response: &Value) -> Result<NormalizedTransaction,
     )?;
     let log_messages = normalize_logs(meta.get("logMessages"))?;
     let invocation_analysis = invocation_logs::analyze(&log_messages);
+    if succeeded && invocation_analysis.deepest_failure.is_some() {
+        return Err(NormalizeError::Malformed(
+            "successful metadata contains a failed invocation",
+        ));
+    }
     let failed_instruction = match transaction_error.as_ref() {
         Some(error) => normalize_failed_instruction(error, transaction)?,
         None => None,
+    };
+    let failure_program_from_logs =
+        !invocation_analysis.malformed && invocation_analysis.deepest_failure.is_some();
+    let logged_failure_program_id = if failure_program_from_logs {
+        invocation_analysis
+            .deepest_failure
+            .as_ref()
+            .map(|failure| validated_program_id(&failure.program_id))
+            .transpose()?
+    } else {
+        None
     };
     let attributed_failure_program_id = if invocation_analysis.malformed {
         failed_instruction
             .as_ref()
             .and_then(|instruction| instruction.program_id.clone())
     } else {
-        invocation_analysis
-            .deepest_failure
-            .map(|failure| failure.program_id)
-            .or_else(|| {
-                failed_instruction
-                    .as_ref()
-                    .and_then(|instruction| instruction.program_id.clone())
-            })
+        logged_failure_program_id.or_else(|| {
+            failed_instruction
+                .as_ref()
+                .and_then(|instruction| instruction.program_id.clone())
+        })
     };
 
     Ok(NormalizedTransaction {
@@ -103,6 +117,7 @@ pub fn normalize_rpc_response(response: &Value) -> Result<NormalizedTransaction,
         transaction_error,
         log_messages,
         attributed_failure_program_id,
+        failure_program_from_logs,
         invocation_logs_malformed: invocation_analysis.malformed,
     })
 }
@@ -200,7 +215,7 @@ fn resolve_program_id(
         .ok_or(NormalizeError::Malformed("failed instruction index"))?;
 
     if let Some(program_id) = instruction.get("programId").and_then(Value::as_str) {
-        return Ok(Some(program_id.to_owned()));
+        return validated_program_id(program_id).map(Some);
     }
 
     let Some(program_id_index) = instruction.get("programIdIndex").and_then(Value::as_u64) else {
@@ -223,7 +238,18 @@ fn resolve_program_id(
         .or_else(|| account_key.get("pubkey").and_then(Value::as_str))
         .ok_or(NormalizeError::Malformed("account key"))?;
 
-    Ok(Some(program_id.to_owned()))
+    validated_program_id(program_id).map(Some)
+}
+
+fn validated_program_id(program_id: &str) -> Result<String, NormalizeError> {
+    let mut decoded = [0_u8; 32];
+    let decoded_length = bs58::decode(program_id)
+        .onto(&mut decoded)
+        .map_err(|_| NormalizeError::Malformed("program ID"))?;
+    if decoded_length != decoded.len() {
+        return Err(NormalizeError::Malformed("program ID"));
+    }
+    Ok(program_id.to_owned())
 }
 
 fn truncate_utf8(value: &str, max_bytes: usize) -> &str {

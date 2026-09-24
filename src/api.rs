@@ -19,6 +19,7 @@ use axum::{
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 use time::{OffsetDateTime, format_description::well_known::Rfc3339};
+use tower::limit::ConcurrencyLimitLayer;
 
 use crate::{
     Diagnosis, NormalizeError, diagnose_rpc_response,
@@ -28,6 +29,7 @@ use crate::{
 };
 
 const MAX_REQUEST_BYTES: usize = 4 * 1024;
+const MAX_CONCURRENT_REQUESTS: usize = 32;
 static NEXT_REQUEST_ID: AtomicU64 = AtomicU64::new(1);
 
 type TransactionFuture<'a> = Pin<Box<dyn Future<Output = Result<Value, RpcError>> + Send + 'a>>;
@@ -109,6 +111,7 @@ fn router_with_source(source: Arc<dyn TransactionSource>) -> Router {
         .route("/health/live", get(health))
         .route("/health/ready", get(health))
         .layer(DefaultBodyLimit::max(MAX_REQUEST_BYTES))
+        .layer(ConcurrencyLimitLayer::new(MAX_CONCURRENT_REQUESTS))
         .with_state(AppState { source })
 }
 
@@ -156,6 +159,14 @@ async fn diagnose_inner(
         .map_err(|error| ApiError::from_rpc(error, request_id))?;
     let mut diagnosis = diagnose_rpc_response(&response)
         .map_err(|error| ApiError::from_normalize(error, request_id))?;
+    if diagnosis.signature != signature.as_str() {
+        return Err(ApiError::new(
+            StatusCode::BAD_GATEWAY,
+            "rpc_invalid_response",
+            "RPC provider returned an invalid response",
+            request_id,
+        ));
+    }
     if !payload.include.log_tail {
         diagnosis.log_tail.clear();
     }
@@ -410,5 +421,26 @@ mod tests {
         assert_eq!(body["category"], "insufficient_transfer_balance");
         assert_eq!(body["confidence"], "confirmed");
         assert_eq!(body["telegram_message"]["parse_mode"], "HTML");
+    }
+
+    #[tokio::test]
+    async fn rejects_a_transaction_that_does_not_match_the_requested_signature() {
+        let fixture: Value =
+            serde_json::from_str(include_str!("../fixtures/insufficient_transfer.json")).unwrap();
+        let calls = Arc::new(AtomicUsize::new(0));
+        let app = fixture_router(fixture, calls);
+        let response = app
+            .oneshot(
+                Request::post("/v1/diagnoses")
+                    .header("content-type", "application/json")
+                    .body(Body::from(
+                        json!({ "signature": "5UntMZRg4ChcYbsY5orMi3ez7uvc64GdheL8R39sWiPRfCeSqQzhK9JYGQ1eeri9LhFYKDVL84KKPQamQJy7V1xR" }).to_string(),
+                    ))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), StatusCode::BAD_GATEWAY);
     }
 }

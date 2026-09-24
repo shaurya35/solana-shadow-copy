@@ -25,7 +25,8 @@ pub fn classify(transaction: &NormalizedTransaction) -> Diagnosis {
         return insufficient_balance(transaction, line, available, required);
     }
 
-    if transaction.attributed_failure_program_id.as_deref() == Some(JUPITER_PROGRAM_ID)
+    if transaction.failure_program_from_logs
+        && transaction.attributed_failure_program_id.as_deref() == Some(JUPITER_PROGRAM_ID)
         && transaction
             .failed_instruction
             .as_ref()
@@ -218,7 +219,7 @@ fn common_evidence(transaction: &NormalizedTransaction) -> Vec<EvidenceItem> {
     } else if let Some(error) = &transaction.transaction_error {
         evidence.push(EvidenceItem {
             kind: EvidenceKind::TransactionError,
-            value: error.to_string(),
+            value: bounded_text(&error.to_string(), 512),
             source_path: "result.meta.err".to_owned(),
             strength: EvidenceStrength::Primary,
             redacted: false,
@@ -229,10 +230,10 @@ fn common_evidence(transaction: &NormalizedTransaction) -> Vec<EvidenceItem> {
         evidence.push(EvidenceItem {
             kind: EvidenceKind::ProgramId,
             value: program_id.clone(),
-            source_path: if transaction.invocation_logs_malformed {
-                "result.transaction.message.instructions".to_owned()
-            } else {
+            source_path: if transaction.failure_program_from_logs {
                 "result.meta.logMessages".to_owned()
+            } else {
+                "result.transaction.message.instructions".to_owned()
             },
             strength: EvidenceStrength::Supporting,
             redacted: false,
@@ -276,6 +277,18 @@ fn log_tail(logs: &[String]) -> Vec<String> {
         .skip(logs.len().saturating_sub(LOG_TAIL_LINES))
         .cloned()
         .collect()
+}
+
+fn bounded_text(value: &str, max_bytes: usize) -> String {
+    if value.len() <= max_bytes {
+        return value.to_owned();
+    }
+
+    let mut end = max_bytes;
+    while !value.is_char_boundary(end) {
+        end -= 1;
+    }
+    value[..end].to_owned()
 }
 
 #[cfg(test)]

@@ -1,6 +1,6 @@
 use serde_json::Value;
 use solana_trade_diagnostics::{
-    diagnose_rpc_response,
+    NormalizeError, diagnose_rpc_response,
     domain::{Category, Confidence},
 };
 
@@ -137,4 +137,23 @@ fn error_6001_from_another_program_is_not_called_jupiter_slippage() {
     let diagnosis = diagnose_rpc_response(&fixture).expect("fixture must normalize");
     assert_eq!(diagnosis.category, Category::UnknownProgramError);
     assert_eq!(diagnosis.confidence, Confidence::Unknown);
+}
+
+#[test]
+fn jupiter_6001_without_a_verified_failure_log_stays_unknown() {
+    let mut fixture = fixture(include_str!("../fixtures/jupiter_slippage_6001.json"));
+    fixture["result"]["meta"]["logMessages"] = Value::Array(Vec::new());
+
+    let diagnosis = diagnose_rpc_response(&fixture).expect("fixture must normalize");
+    assert_eq!(diagnosis.category, Category::UnknownProgramError);
+    assert_eq!(diagnosis.confidence, Confidence::Unknown);
+}
+
+#[test]
+fn contradictory_success_metadata_and_failure_logs_are_rejected() {
+    let mut fixture = fixture(include_str!("../fixtures/jupiter_slippage_6001.json"));
+    fixture["result"]["meta"]["err"] = Value::Null;
+
+    let error = diagnose_rpc_response(&fixture).expect_err("contradictory fixture must fail");
+    assert!(matches!(error, NormalizeError::Malformed(_)));
 }
