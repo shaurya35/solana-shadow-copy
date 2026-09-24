@@ -1,10 +1,13 @@
 //! Core library for Solana transaction diagnostics.
 
+pub mod api;
 pub mod classify;
 pub mod config;
 pub mod domain;
 pub mod invocation_logs;
 pub mod normalize;
+pub mod render_telegram;
+pub mod rpc;
 
 use serde_json::Value;
 

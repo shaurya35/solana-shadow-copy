@@ -2,12 +2,15 @@ use std::{
     env, fmt,
     io::ErrorKind,
     net::{AddrParseError, SocketAddr},
+    time::Duration,
 };
 
 use reqwest::Url;
 use thiserror::Error;
 
 const DEFAULT_API_BIND_ADDR: &str = "0.0.0.0:8080";
+const DEFAULT_RPC_CONNECT_TIMEOUT_MS: u64 = 2_000;
+const DEFAULT_RPC_REQUEST_TIMEOUT_MS: u64 = 8_000;
 
 #[derive(Clone)]
 pub struct SecretString(String);
@@ -28,6 +31,8 @@ impl fmt::Debug for SecretString {
 pub struct ServerConfig {
     rpc_url: Url,
     bind_addr: SocketAddr,
+    rpc_connect_timeout: Duration,
+    rpc_request_timeout: Duration,
 }
 
 impl ServerConfig {
@@ -44,6 +49,14 @@ impl ServerConfig {
         self.bind_addr
     }
 
+    pub fn rpc_connect_timeout(&self) -> Duration {
+        self.rpc_connect_timeout
+    }
+
+    pub fn rpc_request_timeout(&self) -> Duration {
+        self.rpc_request_timeout
+    }
+
     fn from_lookup(mut lookup: impl FnMut(&str) -> Option<String>) -> Result<Self, ConfigError> {
         let rpc_url = parse_http_url("SOLANA_RPC_URL", required(&mut lookup, "SOLANA_RPC_URL")?)?;
         let bind_addr = lookup("API_BIND_ADDR")
@@ -53,8 +66,23 @@ impl ServerConfig {
                 name: "API_BIND_ADDR",
                 source,
             })?;
+        let rpc_connect_timeout = parse_milliseconds(
+            &mut lookup,
+            "RPC_CONNECT_TIMEOUT_MS",
+            DEFAULT_RPC_CONNECT_TIMEOUT_MS,
+        )?;
+        let rpc_request_timeout = parse_milliseconds(
+            &mut lookup,
+            "RPC_REQUEST_TIMEOUT_MS",
+            DEFAULT_RPC_REQUEST_TIMEOUT_MS,
+        )?;
 
-        Ok(Self { rpc_url, bind_addr })
+        Ok(Self {
+            rpc_url,
+            bind_addr,
+            rpc_connect_timeout,
+            rpc_request_timeout,
+        })
     }
 }
 
@@ -106,6 +134,8 @@ pub enum ConfigError {
         #[source]
         source: AddrParseError,
     },
+    #[error("environment variable {name} must be a positive integer number of milliseconds")]
+    InvalidMilliseconds { name: &'static str },
 }
 
 fn load_dotenv() -> Result<(), ConfigError> {
@@ -134,6 +164,23 @@ fn parse_http_url(name: &'static str, value: String) -> Result<Url, ConfigError>
     }
 }
 
+fn parse_milliseconds(
+    lookup: &mut impl FnMut(&str) -> Option<String>,
+    name: &'static str,
+    default: u64,
+) -> Result<Duration, ConfigError> {
+    let milliseconds = match lookup(name) {
+        Some(value) => value
+            .parse::<u64>()
+            .ok()
+            .filter(|value| *value > 0)
+            .ok_or(ConfigError::InvalidMilliseconds { name })?,
+        None => default,
+    };
+
+    Ok(Duration::from_millis(milliseconds))
+}
+
 #[cfg(test)]
 mod tests {
     use std::collections::HashMap;
@@ -158,6 +205,8 @@ mod tests {
         .expect("valid server configuration");
 
         assert_eq!(config.bind_addr().to_string(), DEFAULT_API_BIND_ADDR);
+        assert_eq!(config.rpc_connect_timeout().as_millis(), 2_000);
+        assert_eq!(config.rpc_request_timeout().as_millis(), 8_000);
         assert_eq!(
             config.rpc_url().as_str(),
             "https://api.mainnet-beta.solana.com/"
