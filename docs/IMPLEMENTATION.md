@@ -202,19 +202,20 @@ docker build -t solana-trade-diagnostics:local .
 
 ## Release checklist
 
-- [ ] Three real fixtures are checked and reproducible.
-- [ ] Two confirmed classifications and both unknown fallbacks work.
-- [ ] Wrong-program Jupiter code remains unknown.
-- [ ] Live HTTP requests work for all example signatures.
-- [ ] Telegram commands and Explorer buttons work.
-- [ ] RPC URL and Telegram token are absent from Git and logs.
-- [ ] Docker build and CI pass.
-- [ ] README describes supported behavior and limitations accurately.
+- [x] Three real fixtures are checked and reproducible.
+- [x] Two confirmed classifications and both unknown fallbacks work.
+- [x] Wrong-program Jupiter code remains unknown.
+- [x] Live HTTP requests work for all example signatures.
+- [ ] Telegram commands and Explorer buttons are verified with an operator-provided bot token.
+- [x] RPC URL and Telegram token are absent from Git and logs.
+- [x] Local non-root Docker build and container smoke test pass.
+- [ ] Hosted CI passes on the published commit.
+- [x] README describes supported behavior and limitations accurately.
 
 ## Primary references
 
 - Solana `getTransaction`: <https://solana.com/docs/rpc/http/gettransaction>
 - Solana RPC JSON structures: <https://solana.com/docs/rpc/json-structures>
-- Jupiter common errors: <https://developers.jup.ag/docs/swap/v1/common-errors>
+- Jupiter common errors: <https://dev.jup.ag/docs/swap/common-errors>
 - Telegram `sendMessage`: <https://core.telegram.org/bots/api#sendmessage>
 - Telegram inline keyboards: <https://core.telegram.org/bots/api#inlinekeyboardmarkup>

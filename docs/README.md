@@ -2,9 +2,9 @@
 
 ## Project status
 
-- Status: planned; no implementation exists yet.
+- Status: implemented locally; API and all three mainnet examples are live-tested, while a real Telegram send requires an operator-provided bot token.
 - Working name: `solana-trade-diagnostics`.
-- Repository rename: optional until the first working checkpoint.
+- Repository: `solana-trade-diagnostics`.
 - Target chain: Solana mainnet-beta only for version `0.1`.
 - Primary implementation: Rust.
 - Required product surface: HTTP API, Telegram connector, and demo Telegram bot; web demo is optional polish.
@@ -62,11 +62,11 @@
 - Keep public claims narrower than the implementation evidence.
 - Update these documents whenever a fixed decision changes.
 
-## Sources verified on 23 September 2026
+## Sources verified on 24 September 2026
 
 - Solana [`getTransaction`](https://solana.com/docs/rpc/http/gettransaction): confirmed transaction response and nullable result.
 - Solana [RPC JSON structures](https://solana.com/docs/rpc/json-structures): transaction metadata, transaction errors, logs, inner instructions, balances, fees, and loaded addresses.
-- Jupiter [common errors](https://developers.jup.ag/docs/swap/v1/common-errors): program-specific error mapping and user-facing error guidance; the page states that Metis Swap API v1 is superseded by Swap v2, so mappings must be tied to the on-chain program ID rather than assumed globally.
+- Jupiter [common errors](https://dev.jup.ag/docs/swap/common-errors): program-specific error mapping and user-facing error guidance; mappings are tied to the on-chain program ID rather than assumed globally.
 - Telegram [Bot API `sendMessage`](https://core.telegram.org/bots/api#sendmessage): message text, formatting, and reply markup.
 - Telegram [`InlineKeyboardMarkup`](https://core.telegram.org/bots/api#inlinekeyboardmarkup): inline button rows.
-- `teloxide` [crate documentation](https://docs.rs/teloxide/latest/teloxide/): version `0.17.0` supports Telegram Bot API `9.1`; use only stable basic operations or call the current Bot API directly where compatibility matters.
+- Telegram [`getUpdates`](https://core.telegram.org/bots/api#getupdates): long-polling offset and timeout behavior used by the demo bot.

@@ -1,0 +1,20 @@
+services:
+  api:
+    build: .
+    env_file: .env
+    ports:
+      - "8080:8080"
+    restart: unless-stopped
+
+  telegram_bot:
+    build: .
+    command: ["/app/telegram_bot"]
+    entrypoint: []
+    env_file: .env
+    environment:
+      DIAGNOSTICS_API_URL: http://api:8080
+    depends_on:
+      - api
+    restart: unless-stopped
+    profiles:
+      - telegram
