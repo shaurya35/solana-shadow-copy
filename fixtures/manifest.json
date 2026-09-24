@@ -1,0 +1,32 @@
+{
+  "schema_version": 1,
+  "cluster": "mainnet-beta",
+  "fixtures": [
+    {
+      "name": "insufficient_transfer",
+      "file": "insufficient_transfer.json",
+      "signature": "5DLZ8sA6FPFThpKiD2QGzX3ufPjbV3hRk7Xf7P1A7m3kgB6KX6wcRcND4BdWXNwfbJxV1XNo7JooZJsj7GBrcuYn",
+      "rpc_method": "getTransaction",
+      "rpc_config": {
+        "commitment": "finalized",
+        "encoding": "jsonParsed",
+        "max_supported_transaction_version": 0
+      },
+      "fetched_at": "2026-09-24T09:25:28Z",
+      "verified_at": "2026-09-24",
+      "verified_against": "https://explorer.solana.com/tx/5DLZ8sA6FPFThpKiD2QGzX3ufPjbV3hRk7Xf7P1A7m3kgB6KX6wcRcND4BdWXNwfbJxV1XNo7JooZJsj7GBrcuYn?cluster=mainnet",
+      "sha256": "da79225c2904a943026207e18d2436b9a03f259e7a1aeb1ae4dc7e0d71a8449b",
+      "expected": {
+        "transaction_version": 0,
+        "failed_instruction_index": 3,
+        "failed_program_id": "11111111111111111111111111111111",
+        "fee_lamports": "55000",
+        "compute_units_consumed": "16863",
+        "available_lamports": "2100979360",
+        "required_lamports": "2500000000",
+        "category": "insufficient_transfer_balance",
+        "confidence": "confirmed"
+      }
+    }
+  ]
+}
